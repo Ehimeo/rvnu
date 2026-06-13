@@ -31,7 +31,12 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch (_) {
+      return Response.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
     const {
       contact_id,
       sequence_id,
@@ -106,7 +111,7 @@ ${finalBody}`;
 
     // ── 4. Append unsubscribe footer ─────────────────────────────────────────
     if (unsubscribe_footer) {
-      finalBody += `\n\n---\nYou received this email because you're on our outreach list. <a href="{{unsubscribe_link}}">Unsubscribe</a>`;
+      finalBody += `\n\n---\nYou received this email because you're on our outreach list.`;
     }
 
     // ── 5. Check scheduled send ───────────────────────────────────────────────

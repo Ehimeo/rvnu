@@ -31,7 +31,12 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch (_) {
+      return Response.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
     const {
       contact_id,
       message: rawMessage,
@@ -58,7 +63,7 @@ Deno.serve(async (req) => {
     const contact = await base44.asServiceRole.entities.Contact.get(contact_id);
     if (!contact) return Response.json({ error: 'Contact not found' }, { status: 404 });
 
-    const phoneNumber = contact.phone;
+    const phoneNumber = contact.phone?.trim();
     if (!phoneNumber) {
       return Response.json({ error: 'Contact has no phone number' }, { status: 422 });
     }
@@ -116,9 +121,11 @@ Return ONLY the message text, nothing else.`;
         });
       }
     } catch (waErr) {
-      // Integration may not be configured — still log the attempt
-      console.warn('WhatsApp send failed (integration may be unconfigured):', waErr.message);
-      sendResult = { warning: 'WhatsApp integration not configured; message logged only.' };
+      console.error('WhatsApp send failed:', waErr.message);
+      return Response.json(
+        { error: 'WhatsApp send failed', details: waErr.message },
+        { status: 502 }
+      );
     }
 
     // ── 4. Log to WhatsAppMessage entity ─────────────────────────────────────

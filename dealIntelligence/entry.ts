@@ -26,11 +26,17 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+    let _body: Record<string, unknown>;
+    try {
+      _body = await req.json();
+    } catch (_) {
+      return Response.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
     const {
       deal_id,
       include_email    = true,
       include_coaching = true,
-    } = await req.json();
+    } = _body;
 
     if (!deal_id) {
       return Response.json({ error: 'deal_id is required' }, { status: 400 });

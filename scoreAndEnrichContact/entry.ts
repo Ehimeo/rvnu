@@ -27,7 +27,13 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { contact_id, mode = 'both' } = await req.json();
+    let _body: Record<string, unknown>;
+    try {
+      _body = await req.json();
+    } catch (_) {
+      return Response.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
+    const { contact_id, mode = 'both' } = _body;
 
     if (!contact_id) {
       return Response.json({ error: 'contact_id is required' }, { status: 400 });

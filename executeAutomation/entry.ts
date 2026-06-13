@@ -37,7 +37,12 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch (_) {
+      return Response.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
     const { event, data, old_data, trigger_override, contact_id, deal_id } = body;
 
     // ── 1. Determine which trigger fired ─────────────────────────────────────
@@ -67,7 +72,6 @@ Deno.serve(async (req) => {
         const result = await executeAction({
           rule,
           data,
-          old_data,
           contactId: resolvedContactId,
           dealId:    resolvedDealId,
           base44,
@@ -128,7 +132,6 @@ async function executeAction({
 }: {
   rule: AutomationRule;
   data: Record<string, unknown>;
-  old_data: Record<string, unknown>;
   contactId: string | undefined;
   dealId: string | undefined;
   base44: ReturnType<typeof import('npm:@base44/sdk@0.8.25').createClientFromRequest>;
@@ -192,7 +195,7 @@ async function executeAction({
       // Mark contact so sequence engine skips them
       await base44.asServiceRole.entities.Contact.update(contactId, {
         status: 'qualified',
-        tags:   [...((data.tags as string[]) || []), 'outreach_stopped'],
+        tags:   [...(Array.isArray(data.tags) ? data.tags : []), 'outreach_stopped'],
       });
       return { outreach_stopped: true };
     }
@@ -224,7 +227,7 @@ async function executeAction({
     case 'remove_from_sequence': {
       if (!contactId) return { skipped: true, reason: 'No contact_id' };
       await base44.asServiceRole.entities.Contact.update(contactId, {
-        tags: [...((data.tags as string[]) || []), 'sequence_removed'],
+        tags: [...(Array.isArray(data.tags) ? data.tags : []), 'sequence_removed'],
       });
       return { removed_from_sequence: true };
     }
