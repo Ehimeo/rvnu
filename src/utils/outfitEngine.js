@@ -105,6 +105,8 @@ export function generateOutfits(wardrobe, weather, profile, seeds = {}) {
 
   const outfits = []
 
+  const ctx = { tempCategory, condition, gender }
+
   // Primary outfit for current occasion
   const primaryPieces = buildOutfit(wardrobe, tempCategory, condition, occasion, preferredColors, gender, seeds.primary ?? 0)
   if (primaryPieces.length) {
@@ -112,6 +114,7 @@ export function generateOutfits(wardrobe, weather, profile, seeds = {}) {
       id: 'primary',
       label: "Today's Outfit",
       occasion,
+      context: ctx,
       pieces: primaryPieces,
       description: describeOutfit(primaryPieces, tempCategory, condition, occasion),
     })
@@ -125,6 +128,7 @@ export function generateOutfits(wardrobe, weather, profile, seeds = {}) {
         id: 'rain',
         label: 'If It Rains',
         occasion,
+        context: { ...ctx, condition: 'rainy' },
         pieces: rainPieces,
         description: describeOutfit(rainPieces, tempCategory, 'rainy', occasion),
       })
@@ -139,6 +143,7 @@ export function generateOutfits(wardrobe, weather, profile, seeds = {}) {
       id: 'evening',
       label: occasion === 'casual' ? 'Smarter Option' : 'Casual Option',
       occasion: eveningOccasion,
+      context: ctx,
       pieces: eveningPieces,
       description: describeOutfit(eveningPieces, tempCategory, condition, eveningOccasion),
     })
