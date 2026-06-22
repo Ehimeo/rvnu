@@ -74,7 +74,7 @@ export default function Dashboard({ profile, setProfile, wardrobe }) {
     return (
       <EmptyState
         icon={<Sparkles className="h-10 w-10 text-primary" />}
-        title="Welcome to Rvnu"
+        title="Welcome to Asstitude"
         subtitle="Your personal weather-aware outfit assistant."
         action={<Button onClick={() => navigate('/profile')} size="lg" className="w-full">Set up your profile</Button>}
       />

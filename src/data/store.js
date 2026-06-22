@@ -1,7 +1,7 @@
 const KEYS = {
-  PROFILE: 'rvnu_profile',
-  WARDROBE: 'rvnu_wardrobe',
-  DISMISSED_GEO: 'rvnu_geo_dismissed',
+  PROFILE: 'asstitude_profile',
+  WARDROBE: 'asstitude_wardrobe',
+  DISMISSED_GEO: 'asstitude_geo_dismissed',
 }
 
 export const defaultProfile = {

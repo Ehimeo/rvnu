@@ -43,7 +43,7 @@ export default function GeoPermissionBanner({ onLocation, onDismiss }) {
         <div className="flex-1">
           <p className="text-sm font-semibold text-blue-900">Enable location for live weather</p>
           <p className="text-xs text-blue-600 mt-0.5">
-            Rvnu needs your city to recommend the right outfit for today.
+            Asstitude needs your city to recommend the right outfit for today.
           </p>
           {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
           <Button
