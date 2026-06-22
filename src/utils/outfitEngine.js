@@ -1,4 +1,6 @@
-import { getTempCategory } from './weatherUtils'
+import { getTempCategory, getSeason } from './weatherUtils'
+import { CATALOGUE_BY_ID } from '../data/catalogue'
+import { filterOutfits } from '../data/outfitLibrary'
 
 const OCCASION_WORDS = {
   casual: 'relaxed and comfortable',
@@ -99,7 +101,7 @@ export function generateOutfits(wardrobe, weather, profile, seeds = {}) {
   if (!wardrobe?.length) return []
 
   const { tempCategory, condition } = weather
-  const occasion = profile?.defaultOccasion ?? 'casual'
+  const occasion = profile?.occasion ?? 'casual'
   const preferredColors = profile?.preferredColors ?? []
   const gender = profile?.gender ?? 'all'
 
@@ -150,6 +152,58 @@ export function generateOutfits(wardrobe, weather, profile, seeds = {}) {
   }
 
   return outfits
+}
+
+// ── LIBRARY-BASED GENERATION ──────────────────────────────────────────────────
+
+function weatherTagFromForecast(tempCategory, condition) {
+  if (['rainy','stormy'].includes(condition)) return 'rainy'
+  return tempCategory  // hot | warm | mild | cool | cold | freezing
+}
+
+function seasonFromTempCategory(tempCategory) {
+  if (['hot','warm'].includes(tempCategory)) return 'summer'
+  if (['cool','mild'].includes(tempCategory)) return 'autumn'
+  if (['cold','freezing'].includes(tempCategory)) return 'winter'
+  return 'all'
+}
+
+export function resolveOutfitItems(outfit) {
+  return {
+    ...outfit,
+    label: outfit.occasion,
+    description: outfit.styleTip,
+    pieces: (outfit.itemIds ?? []).map(id => CATALOGUE_BY_ID[id]).filter(Boolean),
+  }
+}
+
+export function generateLibraryOutfits(weather, profile, occasion = null, limit = 8) {
+  const { tempCategory = 'mild', condition = 'cloudy' } = weather ?? {}
+  const gender     = profile?.gender ?? 'men'
+  const occ        = occasion ?? profile?.occasion ?? 'casual'
+  const season     = seasonFromTempCategory(tempCategory)
+  const weatherTag = weatherTagFromForecast(tempCategory, condition)
+
+  let results = filterOutfits({ gender, season, occasion: occ, weatherTag, limit })
+
+  // Broaden search if not enough results
+  if (results.length < 3) {
+    const extra = filterOutfits({ gender, occasion: occ, limit: limit * 2 })
+    const seen = new Set(results.map(o => o.id))
+    for (const o of extra) {
+      if (!seen.has(o.id) && results.length < limit) { results.push(o); seen.add(o.id) }
+    }
+  }
+  if (results.length < 2) {
+    const extra = filterOutfits({ gender, limit: limit * 2 })
+    const seen = new Set(results.map(o => o.id))
+    for (const o of extra) {
+      if (!seen.has(o.id) && results.length < limit) { results.push(o); seen.add(o.id) }
+    }
+  }
+
+  const ctx = { tempCategory, condition, gender }
+  return results.map(o => ({ ...resolveOutfitItems(o), context: ctx }))
 }
 
 export function getOutfitTip(tempC, condition, hourlyData) {

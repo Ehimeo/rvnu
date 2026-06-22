@@ -1,309 +1,222 @@
 import { useState } from 'react'
-import { Plus, Trash2, Search, Filter, X, Check, Users } from 'lucide-react'
+import { Plus, Trash2, Search, Check } from 'lucide-react'
 import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
 import { Card, CardContent } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
+import { CATALOGUE } from '../data/catalogue'
+import { CLOTHING_TYPES, COLORS } from '../data/store'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
-import { CLOTHING_TYPES, WEATHER_TAGS, OCCASIONS, COLORS } from '../data/store'
 import { cn } from '../utils/cn'
 
-const GENDER_AVATAR = { woman: '👩', man: '👨', girl: '👧', boy: '👦' }
+const COLOR_HEX = {
+  black:'#1a1a1a', white:'#f5f5f5', grey:'#9ca3af', navy:'#1e3a5f',
+  beige:'#d4b896', brown:'#92400e', red:'#dc2626', pink:'#ec4899',
+  orange:'#f97316', yellow:'#eab308', green:'#16a34a', blue:'#2563eb',
+  purple:'#7c3aed', cream:'#fffbeb', khaki:'#a16207', olive:'#65a30d',
+  burgundy:'#881337', teal:'#0f766e', coral:'#fb7185',
+}
 
 const TYPE_ICONS = {
-  shirt: '👕', blouse: '👚', top: '👕', sweater: '🧥', hoodie: '🧥',
-  trousers: '👖', jeans: '👖', skirt: '👗', shorts: '🩳', leggings: '🩱',
-  dress: '👗', jumpsuit: '🧥',
-  jacket: '🧥', coat: '🧥', raincoat: '🌂', cardigan: '🧥',
-  shoes: '👟', boots: '👢', trainers: '👟', sandals: '👡', heels: '👠',
-  accessory: '✨', scarf: '🧣', hat: '🎩', belt: '👔', bag: '👜',
+  tshirt:'👕', polo:'👕', 'dress-shirt':'👔', blouse:'👚', hoodie:'🧥', sweater:'🧥', cardigan:'🧥', tank:'🎽',
+  jeans:'👖', chinos:'👖', joggers:'👖', shorts:'🩳', skirt:'👗', trousers:'👖', leggings:'🩱',
+  'casual-dress':'👗', 'work-dress':'👗', 'summer-dress':'👗', jumpsuit:'🧥',
+  'denim-jacket':'🧥', bomber:'🧥', raincoat:'🌂', puffer:'🧥', 'wool-coat':'🧥', blazer:'🧥',
+  trainers:'👟', boots:'👢', loafers:'👞', sandals:'👡', heels:'👠', 'formal-shoes':'👞',
+  scarf:'🧣', hat:'🎩', belt:'👔', watch:'⌚', bag:'👜',
 }
 
-const COLOR_HEX = {
-  black: '#1a1a1a', white: '#f5f5f5', grey: '#9ca3af', navy: '#1e3a5f',
-  beige: '#d4b896', brown: '#92400e', red: '#dc2626', pink: '#ec4899',
-  orange: '#f97316', yellow: '#eab308', green: '#16a34a', blue: '#2563eb',
-  purple: '#7c3aed', cream: '#fffbeb', khaki: '#a16207', olive: '#65a30d',
-  burgundy: '#881337', teal: '#0f766e', coral: '#fb7185',
-}
-
-const empty = { name: '', type: '', colors: [], weatherTags: [], occasions: [], memberId: null }
-
-export default function Wardrobe({ wardrobe, addItem, removeItem, profile }) {
-  const [adding, setAdding] = useState(false)
-  const [form, setForm] = useState(empty)
+function CatalogueBrowser({ profile, wardrobe, addItem, removeItem }) {
   const [search, setSearch] = useState('')
-  const [filterType, setFilterType] = useState('all')
-  const [filterMember, setFilterMember] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const gender = profile?.gender ?? 'men'
 
-  const members = profile?.members ?? []
+  const ownedIds = new Set(wardrobe.map(i => i.catalogueId).filter(Boolean))
 
-  const filtered = wardrobe.filter(item => {
-    const matchSearch = item.name.toLowerCase().includes(search.toLowerCase())
-    const matchType = filterType === 'all' || item.type === filterType
-    const matchMember = filterMember === 'all'
-      || (filterMember === 'me' ? !item.memberId : item.memberId === filterMember)
-    return matchSearch && matchType && matchMember
+  const items = CATALOGUE.filter(item => {
+    const matchGender = item.gender.includes(gender) || item.gender.includes('all')
+    const matchSearch = !search || item.name.toLowerCase().includes(search.toLowerCase())
+    const matchType = typeFilter === 'all' || item.type === typeFilter
+    return matchGender && matchSearch && matchType
   })
 
-  function handleAdd(e) {
-    e.preventDefault()
-    if (!form.name.trim() || !form.type) return
-    addItem({ ...form, name: form.name.trim() })
-    setForm(empty)
-    setAdding(false)
-  }
-
-  function toggleArr(field, val) {
-    setForm(f => ({
-      ...f,
-      [field]: f[field].includes(val) ? f[field].filter(x => x !== val) : [...f[field], val],
-    }))
+  const toggle = (item) => {
+    if (ownedIds.has(item.id)) {
+      const wardrobeItem = wardrobe.find(w => w.catalogueId === item.id)
+      if (wardrobeItem) removeItem(wardrobeItem.id)
+    } else {
+      addItem({ catalogueId: item.id, name: item.name, type: item.type, colors: item.colors })
+    }
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">My Wardrobe</h1>
-          <p className="text-xs text-muted-foreground">{wardrobe.length} items</p>
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            className="w-full h-10 rounded-xl border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            placeholder="Search catalogue…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
         </div>
-        <Button onClick={() => setAdding(a => !a)} size="sm" className="gap-1.5">
-          {adding ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-          {adding ? 'Cancel' : 'Add item'}
-        </Button>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-32 h-10 rounded-xl">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            {[...new Set(CATALOGUE.filter(i => i.gender.includes(gender)).map(i => i.type))].sort().map(t => (
+              <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Add form */}
-      {adding && (
-        <Card className="border-primary/30 shadow-sm">
-          <CardContent className="p-4">
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Name *</label>
-                <Input
-                  placeholder="e.g. Navy blue blazer"
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  autoFocus
-                />
-              </div>
+      <p className="text-xs text-muted-foreground">{items.length} items · tap to add to your wardrobe</p>
 
-              {members.length > 0 && (
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Belongs to</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, memberId: null }))}
-                      className={cn(
-                        'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border transition-all',
-                        !form.memberId ? 'border-primary bg-primary/10 font-medium' : 'border-border hover:border-primary/50'
-                      )}
-                    >
-                      🧑 Me
-                    </button>
-                    {members.map(m => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => setForm(f => ({ ...f, memberId: m.id }))}
-                        className={cn(
-                          'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border transition-all',
-                          form.memberId === m.id ? 'border-primary bg-primary/10 font-medium' : 'border-border hover:border-primary/50'
-                        )}
-                      >
-                        {GENDER_AVATAR[m.gender] ?? '🧑'} {m.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+      <div className="space-y-2">
+        {items.map(item => {
+          const owned = ownedIds.has(item.id)
+          return (
+            <button
+              key={item.id}
+              onClick={() => toggle(item)}
+              className={cn(
+                'w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all',
+                owned ? 'border-primary bg-secondary/50' : 'border-border bg-card hover:border-primary/40'
               )}
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Type *</label>
-                <Select value={form.type} onValueChange={val => setForm(f => ({ ...f, type: val }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CLOTHING_TYPES.map(t => (
-                      <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Colours</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {COLORS.map(c => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => toggleArr('colors', c)}
-                      className={cn(
-                        'flex items-center gap-1 px-2 py-1 rounded-full text-xs border transition-all',
-                        form.colors.includes(c)
-                          ? 'border-primary bg-primary/10 font-medium'
-                          : 'border-border hover:border-primary/50'
-                      )}
-                    >
-                      <span
-                        className="h-3 w-3 rounded-full border border-black/10 shrink-0"
-                        style={{ backgroundColor: COLOR_HEX[c] ?? '#ccc' }}
-                      />
-                      {c}
-                    </button>
+            >
+              <span className="text-xl shrink-0">{TYPE_ICONS[item.type] ?? '👔'}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{item.name}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-xs text-muted-foreground capitalize">{item.type}</span>
+                  {item.colors.map(c => (
+                    <span key={c} className="h-3 w-3 rounded-full border border-black/10" style={{ backgroundColor: COLOR_HEX[c] ?? '#ccc' }} />
                   ))}
+                  <Badge variant="secondary" className="text-[10px] px-1.5 h-4 capitalize ml-auto">{item.formality}</Badge>
                 </div>
               </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Weather</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {WEATHER_TAGS.map(tag => (
-                    <TagChip key={tag} label={tag} active={form.weatherTags.includes(tag)} onClick={() => toggleArr('weatherTags', tag)} />
-                  ))}
-                </div>
+              <div className={cn('h-6 w-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
+                owned ? 'border-primary bg-primary' : 'border-border')}>
+                {owned && <Check className="h-3.5 w-3.5 text-white" />}
               </div>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">Occasions</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {OCCASIONS.map(occ => (
-                    <TagChip key={occ} label={occ} active={form.occasions.includes(occ)} onClick={() => toggleArr('occasions', occ)} />
-                  ))}
-                </div>
+function MyItems({ wardrobe, addItem, removeItem }) {
+  const [adding, setAdding] = useState(false)
+  const [form, setForm] = useState({ name: '', type: '', colors: [] })
+
+  const handleAdd = () => {
+    if (!form.name.trim() || !form.type) return
+    addItem({ name: form.name.trim(), type: form.type, colors: form.colors })
+    setForm({ name: '', type: '', colors: [] })
+    setAdding(false)
+  }
+
+  const custom = wardrobe.filter(i => !i.catalogueId)
+
+  return (
+    <div className="space-y-3">
+      <Button onClick={() => setAdding(a => !a)} variant="outline" className="w-full h-10 rounded-xl gap-2">
+        <Plus className="h-4 w-4" /> Add custom item
+      </Button>
+
+      {adding && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <input className="w-full h-10 rounded-xl border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              placeholder="Item name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
+            <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
+              <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Type" /></SelectTrigger>
+              <SelectContent>
+                {CLOTHING_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div>
+              <p className="text-xs font-medium mb-1.5">Colours</p>
+              <div className="flex flex-wrap gap-1.5">
+                {COLORS.map(c => (
+                  <button key={c} type="button" onClick={() => setForm(f => ({ ...f, colors: f.colors.includes(c) ? f.colors.filter(x=>x!==c) : [...f.colors, c] }))}
+                    className={cn('flex items-center gap-1 px-2 py-1 rounded-full text-xs border transition-all',
+                      form.colors.includes(c) ? 'border-primary bg-secondary font-medium' : 'border-border')}>
+                    <span className="h-3 w-3 rounded-full border border-black/10" style={{ backgroundColor: COLOR_HEX[c] ?? '#ccc' }} />
+                    {c}
+                  </button>
+                ))}
               </div>
-
-              <Button type="submit" className="w-full" disabled={!form.name.trim() || !form.type}>
-                <Check className="h-4 w-4 mr-1" /> Add to wardrobe
-              </Button>
-            </form>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setAdding(false)} className="flex-1 h-9 rounded-xl">Cancel</Button>
+              <Button onClick={handleAdd} className="flex-1 h-9 rounded-xl gradient-primary text-white border-0" disabled={!form.name.trim() || !form.type}>Add</Button>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Search & filter */}
-      {wardrobe.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search clothes..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-36">
-                <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                {[...new Set(wardrobe.map(i => i.type))].sort().map(t => (
-                  <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {members.length > 0 && (
-            <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-              {[{ id: 'all', label: 'Everyone', icon: '👗' }, { id: 'me', label: 'Me', icon: '🧑' }, ...members.map(m => ({ id: m.id, label: m.name, icon: GENDER_AVATAR[m.gender] ?? '🧑' }))].map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => setFilterMember(opt.id)}
-                  className={cn(
-                    'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs whitespace-nowrap border transition-all shrink-0',
-                    filterMember === opt.id ? 'bg-primary text-primary-foreground border-primary font-medium' : 'border-border hover:border-primary/40'
-                  )}
-                >
-                  {opt.icon} {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Item list */}
-      {filtered.length === 0 && wardrobe.length === 0 && (
-        <div className="text-center py-16 text-muted-foreground">
-          <p className="text-4xl mb-3">👚</p>
-          <p className="font-medium">Your wardrobe is empty</p>
-          <p className="text-sm mt-1">Add your first item above to get started.</p>
-        </div>
-      )}
-
-      {filtered.length === 0 && wardrobe.length > 0 && (
-        <div className="text-center py-10 text-muted-foreground text-sm">No items match your search.</div>
+      {custom.length === 0 && !adding && (
+        <p className="text-sm text-muted-foreground text-center py-8">No custom items yet.<br />Add items that aren't in the catalogue.</p>
       )}
 
       <div className="space-y-2">
-        {filtered.map(item => (
-          <WardrobeItem key={item.id} item={item} members={members} onRemove={() => removeItem(item.id)} />
+        {custom.map(item => (
+          <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl border bg-card">
+            <span className="text-xl shrink-0">{TYPE_ICONS[item.type] ?? '👔'}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{item.name}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-xs text-muted-foreground capitalize">{item.type}</span>
+                {item.colors?.map(c => (
+                  <span key={c} className="h-3 w-3 rounded-full border border-black/10" style={{ backgroundColor: COLOR_HEX[c] ?? '#ccc' }} />
+                ))}
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0" onClick={() => removeItem(item.id)}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         ))}
       </div>
     </div>
   )
 }
 
-function WardrobeItem({ item, members, onRemove }) {
-  const owner = item.memberId ? members.find(m => m.id === item.memberId) : null
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-xl border bg-card hover:border-primary/30 transition-colors">
-      <span className="text-2xl shrink-0">{TYPE_ICONS[item.type] ?? '👔'}</span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <p className="font-medium text-sm truncate">{item.name}</p>
-          {owner && (
-            <span className="text-xs shrink-0">{GENDER_AVATAR[owner.gender] ?? '🧑'}</span>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-          <span className="text-xs text-muted-foreground capitalize">{item.type}</span>
-          {item.colors?.slice(0, 3).map(c => (
-            <span
-              key={c}
-              className="h-3 w-3 rounded-full border border-black/10 inline-block"
-              style={{ backgroundColor: COLOR_HEX[c] ?? '#ccc' }}
-              title={c}
-            />
-          ))}
-          {item.weatherTags?.map(t => (
-            <Badge key={t} variant="secondary" className="text-xs py-0 px-1.5 h-4 capitalize">{t}</Badge>
-          ))}
-        </div>
-      </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
-        onClick={onRemove}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
-    </div>
-  )
-}
+export default function Wardrobe({ wardrobe, addItem, removeItem, profile }) {
+  const [tab, setTab] = useState('catalogue')
+  const ownedCount = wardrobe.filter(i => i.catalogueId).length
 
-function TagChip({ label, active, onClick }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'px-2.5 py-1 rounded-full text-xs border transition-all capitalize',
-        active
-          ? 'border-primary bg-primary text-primary-foreground font-medium'
-          : 'border-border hover:border-primary/50 text-foreground'
+    <div className="pb-6 space-y-4">
+      <div className="pt-2">
+        <h1 className="text-2xl font-bold tracking-tight">Wardrobe</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">{wardrobe.length} item{wardrobe.length !== 1 ? 's' : ''} owned</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex bg-muted rounded-xl p-1">
+        <button onClick={() => setTab('catalogue')}
+          className={cn('flex-1 py-2 text-sm font-semibold rounded-lg transition-all', tab === 'catalogue' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground')}>
+          Catalogue
+        </button>
+        <button onClick={() => setTab('mine')}
+          className={cn('flex-1 py-2 text-sm font-semibold rounded-lg transition-all', tab === 'mine' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground')}>
+          Custom {wardrobe.filter(i=>!i.catalogueId).length > 0 ? `(${wardrobe.filter(i=>!i.catalogueId).length})` : ''}
+        </button>
+      </div>
+
+      {tab === 'catalogue' && (
+        <CatalogueBrowser profile={profile} wardrobe={wardrobe} addItem={addItem} removeItem={removeItem} />
       )}
-    >
-      {label}
-    </button>
+      {tab === 'mine' && (
+        <MyItems wardrobe={wardrobe} addItem={addItem} removeItem={removeItem} />
+      )}
+    </div>
   )
 }

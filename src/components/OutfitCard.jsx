@@ -1,29 +1,29 @@
 import { useState, useEffect } from 'react'
-import { Heart, Shuffle, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
+import { Heart, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
 import { Card, CardContent, CardHeader } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
-import MannequinDisplay from './MannequinDisplay'
+import Mannequin from './mannequin/Mannequin'
 import { cn } from '../utils/cn'
 
 const TYPE_ICONS = {
-  shirt: '👕', blouse: '👚', top: '👕', sweater: '🧥', hoodie: '🧥',
-  trousers: '👖', jeans: '👖', skirt: '👗', shorts: '🩳', leggings: '🩱',
-  dress: '👗', jumpsuit: '🧥',
-  jacket: '🧥', coat: '🧥', raincoat: '🌂', cardigan: '🧥',
-  shoes: '👟', boots: '👢', trainers: '👟', sandals: '👡', heels: '👠',
-  accessory: '✨', scarf: '🧣', hat: '🎩', belt: '👔', bag: '👜',
+  tshirt:'👕', polo:'👕', 'dress-shirt':'👔', blouse:'👚', hoodie:'🧥', sweater:'🧥', cardigan:'🧥', tank:'🎽',
+  jeans:'👖', chinos:'👖', joggers:'👖', shorts:'🩳', skirt:'👗', trousers:'👖', leggings:'🩱',
+  'casual-dress':'👗', 'work-dress':'👗', 'summer-dress':'👗', jumpsuit:'🧥',
+  'denim-jacket':'🧥', bomber:'🧥', raincoat:'🌂', puffer:'🧥', 'wool-coat':'🧥', blazer:'🧥',
+  trainers:'👟', boots:'👢', loafers:'👞', sandals:'👡', heels:'👠', 'formal-shoes':'👞',
+  scarf:'🧣', hat:'🎩', belt:'👔', watch:'⌚', bag:'👜',
 }
 
 const COLOR_SWATCHES = {
-  black: '#1a1a1a', white: '#f5f5f5', grey: '#9ca3af', navy: '#1e3a5f',
-  beige: '#d4b896', brown: '#92400e', red: '#dc2626', pink: '#ec4899',
-  orange: '#f97316', yellow: '#eab308', green: '#16a34a', blue: '#2563eb',
-  purple: '#7c3aed', cream: '#fffbeb', khaki: '#a16207', olive: '#65a30d',
-  burgundy: '#881337', teal: '#0f766e', coral: '#fb7185',
+  black:'#1a1a1a', white:'#f5f5f5', grey:'#9ca3af', navy:'#1e3a5f',
+  beige:'#d4b896', brown:'#92400e', red:'#dc2626', pink:'#ec4899',
+  orange:'#f97316', yellow:'#eab308', green:'#16a34a', blue:'#2563eb',
+  purple:'#7c3aed', cream:'#fffbeb', khaki:'#a16207', olive:'#65a30d',
+  burgundy:'#881337', teal:'#0f766e', coral:'#fb7185',
 }
 
-export default function OutfitCard({ outfit, saved, onSave, onShuffle }) {
+export default function OutfitCard({ outfit, saved, onSave }) {
   const [expanded, setExpanded] = useState(true)
   const [aiName, setAiName] = useState(null)
   const [aiTip, setAiTip] = useState(null)
@@ -38,7 +38,6 @@ export default function OutfitCard({ outfit, saved, onSave, onShuffle }) {
     setAiLoading(true)
 
     const controller = new AbortController()
-
     fetch('/api/suggest', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -51,10 +50,10 @@ export default function OutfitCard({ outfit, saved, onSave, onShuffle }) {
         gender: outfit.context?.gender,
       }),
     })
-      .then(r => (r.ok ? r.json() : null))
+      .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.name) setAiName(data.name)
-        if (data?.tip) setAiTip(data.tip)
+        if (data?.tip)  setAiTip(data.tip)
       })
       .catch(() => {})
       .finally(() => setAiLoading(false))
@@ -64,48 +63,36 @@ export default function OutfitCard({ outfit, saved, onSave, onShuffle }) {
 
   if (!outfit?.pieces?.length) return null
 
+  const displayName = aiName ?? outfit.name ?? outfit.label ?? ''
+  const displayTip  = aiTip ?? outfit.description ?? outfit.styleTip ?? ''
+  const gender      = outfit.context?.gender ?? outfit.gender ?? 'men'
+  const build       = outfit.build ?? 'average'
+
   return (
     <Card className="overflow-hidden border border-border/50 shadow-sm">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            {/* Category label */}
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
-              {outfit.label}
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5 capitalize">
+              {outfit.occasion ?? outfit.label}
             </p>
 
-            {/* AI outfit name */}
             {aiLoading && !aiName && (
-              <div className="h-6 w-36 rounded bg-muted animate-pulse mb-1" />
+              <div className="h-5 w-36 rounded bg-muted animate-pulse mb-1" />
             )}
-            {aiName && (
+            {displayName && (
               <div className="flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-                <h3 className="text-base font-bold leading-tight">{aiName}</h3>
+                {aiName && <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />}
+                <h3 className="text-base font-bold leading-tight">{displayName}</h3>
               </div>
             )}
-            {!aiName && !aiLoading && (
-              <h3 className="text-base font-semibold leading-tight">{outfit.label}</h3>
-            )}
 
-            {/* Tip or description */}
-            <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-              {aiTip ?? outfit.description}
-            </p>
+            {displayTip && (
+              <p className="text-xs text-muted-foreground leading-relaxed mt-1">{displayTip}</p>
+            )}
           </div>
 
           <div className="flex gap-0.5 shrink-0">
-            {onShuffle && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                onClick={onShuffle}
-                title="Try a different combination"
-              >
-                <Shuffle className="h-4 w-4" />
-              </Button>
-            )}
             <Button
               variant="ghost"
               size="icon"
@@ -115,12 +102,7 @@ export default function OutfitCard({ outfit, saved, onSave, onShuffle }) {
             >
               <Heart className={cn('h-4 w-4', saved && 'fill-current')} />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setExpanded(e => !e)}
-            >
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExpanded(e => !e)}>
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
           </div>
@@ -131,10 +113,13 @@ export default function OutfitCard({ outfit, saved, onSave, onShuffle }) {
         <CardContent className="pt-0">
           <div className="flex gap-3 items-start">
             {/* Mannequin */}
-            <div className="shrink-0 flex items-center justify-center rounded-xl bg-muted/30 py-1">
-              <MannequinDisplay
+            <div className="shrink-0 flex items-center justify-center rounded-xl bg-muted/30 py-2 px-1">
+              <Mannequin
                 pieces={outfit.pieces}
-                gender={outfit.context?.gender}
+                gender={gender}
+                build={build}
+                width={100}
+                height={264}
               />
             </div>
 
@@ -176,11 +161,10 @@ function PieceRow({ piece }) {
 }
 
 function ColorDot({ color }) {
-  const hex = COLOR_SWATCHES[color] ?? '#ccc'
   return (
     <div
       className="h-3.5 w-3.5 rounded-full border border-black/10 shrink-0"
-      style={{ backgroundColor: hex }}
+      style={{ backgroundColor: COLOR_SWATCHES[color] ?? '#ccc' }}
       title={color}
     />
   )
