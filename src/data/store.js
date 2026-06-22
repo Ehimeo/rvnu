@@ -1,6 +1,7 @@
 const KEYS = {
   PROFILE: 'rvnu_profile',
   WARDROBE: 'rvnu_wardrobe',
+  DISMISSED_GEO: 'rvnu_geo_dismissed',
 }
 
 export const defaultProfile = {
@@ -14,6 +15,15 @@ export const defaultProfile = {
   preferredColors: [],
   modestyLevel: 'standard',
   styleNotes: '',
+  members: [],
+}
+
+export function loadGeoDismissed() {
+  return localStorage.getItem(KEYS.DISMISSED_GEO) === '1'
+}
+
+export function saveGeoDismissed() {
+  localStorage.setItem(KEYS.DISMISSED_GEO, '1')
 }
 
 export function loadProfile() {

@@ -29,7 +29,7 @@ function scoreItem(item, occasion, preferredColors, tempCategory, condition) {
   return score
 }
 
-function buildOutfit(wardrobe, tempCategory, condition, occasion, preferredColors, gender) {
+function buildOutfit(wardrobe, tempCategory, condition, occasion, preferredColors, gender, seed = 0) {
   const byType = {}
   for (const item of wardrobe) {
     if (!byType[item.type]) byType[item.type] = []
@@ -39,8 +39,10 @@ function buildOutfit(wardrobe, tempCategory, condition, occasion, preferredColor
     })
   }
 
-  const pick = type =>
-    (byType[type] ?? []).sort((a, b) => b.score - a.score)[0] ?? null
+  const pick = type => {
+    const arr = (byType[type] ?? []).sort((a, b) => b.score - a.score)
+    return arr.length ? arr[seed % arr.length] : null
+  }
 
   const needsJacket = ['cold', 'freezing', 'cool'].includes(tempCategory) || condition === 'rainy'
   const needsRainwear = ['rainy', 'stormy'].includes(condition)
@@ -93,7 +95,7 @@ function describeOutfit(pieces, tempCategory, condition, occasion) {
   return `Perfect for ${OCCASION_WORDS[occasion] ?? occasion} vibes on a ${tempDesc}, ${condition === 'rainy' ? 'rainy' : condition} day — ${list}.`
 }
 
-export function generateOutfits(wardrobe, weather, profile) {
+export function generateOutfits(wardrobe, weather, profile, seeds = {}) {
   if (!wardrobe?.length) return []
 
   const { tempCategory, condition } = weather
@@ -104,7 +106,7 @@ export function generateOutfits(wardrobe, weather, profile) {
   const outfits = []
 
   // Primary outfit for current occasion
-  const primaryPieces = buildOutfit(wardrobe, tempCategory, condition, occasion, preferredColors, gender)
+  const primaryPieces = buildOutfit(wardrobe, tempCategory, condition, occasion, preferredColors, gender, seeds.primary ?? 0)
   if (primaryPieces.length) {
     outfits.push({
       id: 'primary',
@@ -117,7 +119,7 @@ export function generateOutfits(wardrobe, weather, profile) {
 
   // Rain alternative if not already rainy
   if (condition !== 'rainy' && condition !== 'stormy') {
-    const rainPieces = buildOutfit(wardrobe, tempCategory, 'rainy', occasion, preferredColors, gender)
+    const rainPieces = buildOutfit(wardrobe, tempCategory, 'rainy', occasion, preferredColors, gender, seeds.rain ?? 0)
     if (rainPieces.length) {
       outfits.push({
         id: 'rain',
@@ -131,7 +133,7 @@ export function generateOutfits(wardrobe, weather, profile) {
 
   // Evening/smart alternative
   const eveningOccasion = occasion === 'casual' ? 'work' : 'casual'
-  const eveningPieces = buildOutfit(wardrobe, tempCategory, condition, eveningOccasion, preferredColors, gender)
+  const eveningPieces = buildOutfit(wardrobe, tempCategory, condition, eveningOccasion, preferredColors, gender, seeds.evening ?? 0)
   if (eveningPieces.length && JSON.stringify(eveningPieces.map(p => p.id)) !== JSON.stringify(primaryPieces.map(p => p.id))) {
     outfits.push({
       id: 'evening',

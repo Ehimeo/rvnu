@@ -1,27 +1,46 @@
-import { useState, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapPin, Sparkles, AlertTriangle, Shirt } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent } from '../components/ui/card'
 import WeatherCard from '../components/WeatherCard'
 import OutfitCard from '../components/OutfitCard'
+import ForecastStrip from '../components/ForecastStrip'
+import GeoPermissionBanner from '../components/GeoPermissionBanner'
+import MemberSwitcher from '../components/MemberSwitcher'
 import { useWeather } from '../hooks/useWeather'
 import { generateOutfits, getOutfitTip } from '../utils/outfitEngine'
 import { getSeason } from '../utils/weatherUtils'
+import { loadGeoDismissed, saveGeoDismissed } from '../data/store'
 
-export default function Dashboard({ profile, wardrobe }) {
+export default function Dashboard({ profile, setProfile, wardrobe }) {
   const navigate = useNavigate()
   const [saved, setSaved] = useState({})
-  const [manualLocation, setManualLocation] = useState(null)
+  const [seeds, setSeeds] = useState({})
+  const [activeMemberId, setActiveMemberId] = useState(null)
+  const [geoDismissed, setGeoDismissed] = useState(() => loadGeoDismissed())
 
-  const lat = profile?.lat ?? manualLocation?.lat ?? null
-  const lon = profile?.lon ?? manualLocation?.lon ?? null
-  const locationName = profile?.location || manualLocation?.name || null
+  const lat = profile?.lat ?? null
+  const lon = profile?.lon ?? null
+  const locationName = profile?.location || null
 
   const { weather, loading, error, refresh } = useWeather(lat, lon)
 
-  const outfits = weather && wardrobe?.length
-    ? generateOutfits(wardrobe, weather, profile)
+  // Filter wardrobe to the active member
+  const memberWardrobe = wardrobe.filter(item =>
+    activeMemberId === null ? !item.memberId : item.memberId === activeMemberId
+  )
+
+  const activeMember = activeMemberId
+    ? profile?.members?.find(m => m.id === activeMemberId)
+    : null
+
+  const activeProfile = activeMember
+    ? { ...profile, gender: activeMember.gender, ageGroup: activeMember.ageGroup, name: activeMember.name }
+    : profile
+
+  const outfits = weather && memberWardrobe.length
+    ? generateOutfits(memberWardrobe, weather, activeProfile, seeds)
     : []
 
   const tips = weather
@@ -29,10 +48,27 @@ export default function Dashboard({ profile, wardrobe }) {
     : []
 
   const season = getSeason(new Date().getMonth() + 1)
-
   const noProfile = !profile
   const noLocation = profile && !profile.lat && !profile.lon
-  const noWardrobe = wardrobe?.length === 0
+  const noWardrobe = memberWardrobe.length === 0
+  const showGeoBanner = profile && noLocation && !geoDismissed
+
+  function handleShuffle(outfitId) {
+    setSeeds(s => ({ ...s, [outfitId]: ((s[outfitId] ?? 0) + 1) }))
+  }
+
+  function handleGeoLocation({ lat, lon, name }) {
+    if (setProfile) {
+      setProfile({ ...profile, lat, lon, location: name })
+    }
+    setGeoDismissed(true)
+    saveGeoDismissed()
+  }
+
+  function dismissGeoBanner() {
+    setGeoDismissed(true)
+    saveGeoDismissed()
+  }
 
   if (noProfile) {
     return (
@@ -45,20 +81,36 @@ export default function Dashboard({ profile, wardrobe }) {
     )
   }
 
+  const displayName = activeMember?.name || profile.name || 'there'
+
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">
-            {greeting()}, {profile.name || 'there'} 👋
+            {greeting()}, {displayName} 👋
           </h1>
-          <p className="text-xs text-muted-foreground capitalize">{season} · {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+          <p className="text-xs text-muted-foreground capitalize">
+            {season} · {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
         </div>
       </div>
 
-      {/* Location missing */}
-      {noLocation && (
+      {/* Family member switcher */}
+      <MemberSwitcher
+        profile={profile}
+        activeMemberId={activeMemberId}
+        onSwitch={setActiveMemberId}
+      />
+
+      {/* Geolocation banner */}
+      {showGeoBanner && (
+        <GeoPermissionBanner onLocation={handleGeoLocation} onDismiss={dismissGeoBanner} />
+      )}
+
+      {/* Location missing (after dismissing banner) */}
+      {noLocation && geoDismissed && (
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-4 flex items-center gap-3">
             <MapPin className="h-5 w-5 text-amber-600 shrink-0" />
@@ -89,7 +141,10 @@ export default function Dashboard({ profile, wardrobe }) {
             </Card>
           )}
           {weather && !loading && (
-            <WeatherCard weather={weather} locationName={locationName} onRefresh={refresh} loading={loading} />
+            <>
+              <WeatherCard weather={weather} locationName={locationName} onRefresh={refresh} loading={loading} />
+              <ForecastStrip daily={weather.daily} timezone={weather.timezone} />
+            </>
           )}
         </>
       )}
@@ -110,8 +165,8 @@ export default function Dashboard({ profile, wardrobe }) {
       {noWardrobe && lat && lon && (
         <EmptyState
           icon={<Shirt className="h-10 w-10 text-muted-foreground" />}
-          title="Wardrobe is empty"
-          subtitle="Add your clothes to get personalised outfit suggestions."
+          title={activeMember ? `${activeMember.name}'s wardrobe is empty` : 'Wardrobe is empty'}
+          subtitle="Add clothes to get personalised outfit suggestions."
           action={<Button onClick={() => navigate('/wardrobe')} className="w-full">Add clothes</Button>}
         />
       )}
@@ -122,16 +177,16 @@ export default function Dashboard({ profile, wardrobe }) {
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Outfit Suggestions</h2>
           {outfits.map(outfit => (
             <OutfitCard
-              key={outfit.id}
+              key={outfit.id + (seeds[outfit.id] ?? 0)}
               outfit={outfit}
               saved={!!saved[outfit.id]}
               onSave={() => setSaved(s => ({ ...s, [outfit.id]: !s[outfit.id] }))}
+              onShuffle={() => handleShuffle(outfit.id)}
             />
           ))}
         </div>
       )}
 
-      {/* Placeholder when waiting for weather */}
       {lat && lon && !loading && !error && weather && outfits.length === 0 && !noWardrobe && (
         <div className="text-center py-10 text-muted-foreground text-sm">
           Not enough tagged items to build an outfit yet.

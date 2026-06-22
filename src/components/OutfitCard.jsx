@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Heart, RefreshCw, ChevronDown, ChevronUp, Shirt } from 'lucide-react'
+import { Heart, Shuffle, ChevronDown, ChevronUp } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -22,7 +22,7 @@ const COLOR_SWATCHES = {
   burgundy: '#881337', teal: '#0f766e', coral: '#fb7185',
 }
 
-export default function OutfitCard({ outfit, saved, onSave, onDislike }) {
+export default function OutfitCard({ outfit, saved, onSave, onShuffle }) {
   const [expanded, setExpanded] = useState(true)
 
   if (!outfit?.pieces?.length) return null
@@ -33,6 +33,17 @@ export default function OutfitCard({ outfit, saved, onSave, onDislike }) {
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold">{outfit.label}</CardTitle>
           <div className="flex gap-1">
+            {onShuffle && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={onShuffle}
+                title="Try a different combination"
+              >
+                <Shuffle className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"

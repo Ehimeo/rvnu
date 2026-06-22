@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
-import { MapPin, Loader2, Save, CheckCircle } from 'lucide-react'
+import { MapPin, Loader2, Save, CheckCircle, Plus, Trash2 } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Card, CardContent } from '../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
-import { Badge } from '../components/ui/badge'
 import { GENDER_OPTIONS, AGE_GROUPS, OCCASIONS, COLORS, defaultProfile } from '../data/store'
 import { geocodeCity } from '../utils/weatherUtils'
 import { cn } from '../utils/cn'
@@ -15,15 +14,24 @@ const MODESTY_OPTIONS = [
   { value: 'minimal', label: 'Minimal / Relaxed' },
 ]
 
+const GENDER_AVATAR = { woman: '👩', man: '👨', girl: '👧', boy: '👦' }
+
+const emptyMember = { name: '', gender: 'girl', ageGroup: 'child' }
+
 export default function Profile({ profile, setProfile }) {
   const [form, setForm] = useState(profile ?? defaultProfile)
   const [cityInput, setCityInput] = useState(profile?.location ?? '')
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError, setGeoError] = useState(null)
   const [saved, setSaved] = useState(false)
+  const [addingMember, setAddingMember] = useState(false)
+  const [memberForm, setMemberForm] = useState(emptyMember)
 
   useEffect(() => {
-    if (profile) setForm({ ...defaultProfile, ...profile })
+    if (profile) {
+      setForm({ ...defaultProfile, ...profile })
+      setCityInput(profile.location ?? '')
+    }
   }, [profile])
 
   function set(field, val) {
@@ -78,6 +86,20 @@ export default function Profile({ profile, setProfile }) {
     }
   }
 
+  function addMember() {
+    if (!memberForm.name.trim()) return
+    const member = { ...memberForm, name: memberForm.name.trim(), id: crypto.randomUUID() }
+    setForm(f => ({ ...f, members: [...(f.members ?? []), member] }))
+    setMemberForm(emptyMember)
+    setAddingMember(false)
+    setSaved(false)
+  }
+
+  function removeMember(id) {
+    setForm(f => ({ ...f, members: f.members.filter(m => m.id !== id) }))
+    setSaved(false)
+  }
+
   function handleSave() {
     setProfile(form)
     setSaved(true)
@@ -96,20 +118,14 @@ export default function Profile({ profile, setProfile }) {
       {/* Basic info */}
       <Section title="About you">
         <Field label="Your name (optional)">
-          <Input
-            placeholder="e.g. Amara"
-            value={form.name}
-            onChange={e => set('name', e.target.value)}
-          />
+          <Input placeholder="e.g. Amara" value={form.name} onChange={e => set('name', e.target.value)} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Gender">
             <Select value={form.gender} onValueChange={v => set('gender', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {GENDER_OPTIONS.map(g => (
-                  <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
-                ))}
+                {GENDER_OPTIONS.map(g => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </Field>
@@ -117,9 +133,7 @@ export default function Profile({ profile, setProfile }) {
             <Select value={form.ageGroup} onValueChange={v => set('ageGroup', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {AGE_GROUPS.map(a => (
-                  <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
-                ))}
+                {AGE_GROUPS.map(a => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </Field>
@@ -195,7 +209,7 @@ export default function Profile({ profile, setProfile }) {
 
       {/* Preferred colours */}
       <Section title="Favourite colours">
-        <p className="text-xs text-muted-foreground -mt-1 mb-3">Pick up to 5 colours you love wearing.</p>
+        <p className="text-xs text-muted-foreground -mt-1 mb-3">Pick colours you love wearing.</p>
         <div className="flex flex-wrap gap-2">
           {COLORS.map(c => {
             const hex = COLOR_MAP[c]
@@ -217,6 +231,75 @@ export default function Profile({ profile, setProfile }) {
         </div>
         {form.preferredColors?.length > 0 && (
           <p className="text-xs text-muted-foreground mt-2">{form.preferredColors.length} selected</p>
+        )}
+      </Section>
+
+      {/* Family members */}
+      <Section title="Family members">
+        <p className="text-xs text-muted-foreground -mt-1 mb-3">
+          Add family members to get outfit suggestions for each of them.
+        </p>
+
+        {(form.members ?? []).map(member => (
+          <div key={member.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/40 mb-2">
+            <span className="text-xl">{GENDER_AVATAR[member.gender] ?? '🧑'}</span>
+            <div className="flex-1">
+              <p className="text-sm font-medium">{member.name}</p>
+              <p className="text-xs text-muted-foreground capitalize">{member.gender} · {member.ageGroup}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              onClick={() => removeMember(member.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ))}
+
+        {addingMember ? (
+          <div className="space-y-3 p-3 rounded-xl border border-primary/20 bg-primary/5">
+            <Input
+              placeholder="Name, e.g. Zara"
+              value={memberForm.name}
+              onChange={e => setMemberForm(f => ({ ...f, name: e.target.value }))}
+              autoFocus
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <Select value={memberForm.gender} onValueChange={v => setMemberForm(f => ({ ...f, gender: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {GENDER_OPTIONS.map(g => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={memberForm.ageGroup} onValueChange={v => setMemberForm(f => ({ ...f, ageGroup: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {AGE_GROUPS.map(a => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={addMember} disabled={!memberForm.name.trim()} className="flex-1">
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add member
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setAddingMember(false); setMemberForm(emptyMember) }}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          (form.members ?? []).length < 5 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full border-dashed"
+              onClick={() => setAddingMember(true)}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1.5" /> Add family member
+            </Button>
+          )
         )}
       </Section>
 
