@@ -4,6 +4,7 @@ const K = {
   WARDROBE:  'stylemate_wardrobe',
   SAVED:     'stylemate_saved',
   ONBOARDED: 'stylemate_onboarded',
+  CALENDAR:  'stylemate_calendar_events',
 }
 
 // ── PROFILE ───────────────────────────────────────────────────────────────────
@@ -166,6 +167,18 @@ export const CLOTHING_TYPES = [
   'trainers','boots','loafers','sandals','heels','formal-shoes',
   'scarf','hat','belt','watch','bag',
 ]
+
+// ── CALENDAR EVENTS ───────────────────────────────────────────────────────────
+
+export function loadCalendarEvents() {
+  return parseJSON(localStorage.getItem(K.CALENDAR), [])
+}
+
+export function saveCalendarEvents(events) {
+  localStorage.setItem(K.CALENDAR, JSON.stringify(events))
+}
+
+// ── LEGACY COMPATIBILITY ──────────────────────────────────────────────────────
 
 // Legacy compatibility
 export const defaultProfile = DEFAULT_PROFILE

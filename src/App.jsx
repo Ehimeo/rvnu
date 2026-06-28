@@ -7,6 +7,7 @@ import Generate from './pages/Generate'
 import Saved from './pages/Saved'
 import Profiles from './pages/Profiles'
 import Onboarding from './pages/Onboarding'
+import Calendar from './pages/Calendar'
 import { useWardrobe } from './hooks/useWardrobe'
 import { useSaved } from './hooks/useSaved'
 import { isOnboarded, loadProfiles, loadActiveProfile, loadActiveProfileId, saveActiveProfileId } from './data/store'
@@ -62,6 +63,7 @@ function AppShell() {
               onProfilesChange={refreshProfiles}
             />
           } />
+          <Route path="/calendar" element={<Calendar profile={profile} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
